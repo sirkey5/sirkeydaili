@@ -218,11 +218,11 @@ function matchIndustryDomain(host, domainGroup) {
 const proxyAvailabilityCache = {};
 const proxyResponseTimeCache = {};
 // 重试次数
-const MAX_RETRIES = 3;
+const MAX_RETRIES = 1;
 // 记录代理失败次数
 let proxyFailureCount = 0;
 // 最大代理失败次数，超过该次数则切换到直连
-const MAX_PROXY_FAILURES = 3;
+const MAX_PROXY_FAILURES = 1;
 
 // 检查代理是否可用并记录响应时间
 function checkProxy(proxy) {
