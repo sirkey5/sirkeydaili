@@ -1,8 +1,8 @@
 /******************** 基础配置 ********************/
-// 唯一的 http 代理配置
+// 唯一的 http 代理配置，端口统一为 10808
 const httpProxy = "PROXY 192.168.1.55:10808; DIRECT";
-// 唯一的 socks5 代理配置
-const socks5Proxy = "SOCKS5 192.168.1.55:10809; DIRECT";
+// 唯一的 socks5 代理配置，端口统一为 10808
+const socks5Proxy = "SOCKS5 192.168.1.55:10808; DIRECT";
 // 直连配置
 const direct = "DIRECT";
 
@@ -251,6 +251,13 @@ function FindProxyForURL(url, host) {
         }
 
         if (selectedProxy) {
+            // 确保TikTok使用代理
+            if (shExpMatch(host, "*.tiktok.com")) {
+                return url.startsWith("http:") || url.startsWith("https:")
+                   ? selectedProxy
+                    : direct;
+            }
+
             // 行业规则判断
             const allDomainGroups = [
                 socialMedia, devTools, finance, education, healthcare,
@@ -275,7 +282,6 @@ function FindProxyForURL(url, host) {
                     : direct;
             }
 
-            // 其他非直连域名默认使用代理
             return selectedProxy;
         } else {
             proxyFailureCount++;
