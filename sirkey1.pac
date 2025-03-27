@@ -195,20 +195,6 @@ const directDomains = [
     "baidu.com", "baidupcs.com", "baidustatic.com", "bdimg.com", "bdstatic.com", "duckduckgo.com"
 ];
 
-// 常见 App 域名列表，进一步补充
-const commonAppDomains = [
-    ".tiktok.com", ".tiktokcdn.com", ".bytedance.com",
-    ".whatsapp.net", ".whatsapp.com",
-    ".instagram.com", ".instagram.net",
-    ".facebook.com", ".facebook.net",
-    ".twitter.com", ".x.com",
-    ".snapchat.com",
-    ".telegram.org",
-    ".line.me",
-    ".discord.com",
-    ".viber.com"
-];
-
 // 缓存DNS解析结果，避免重复解析
 const dnsCache = {};
 function dnsResolveCached(host) {
@@ -228,8 +214,9 @@ function matchIndustryDomain(host, domainGroup) {
     return domainGroup.some((domain) => shExpMatch(host, `*${domain}`));
 }
 
-// 缓存代理可用性结果
+// 缓存代理可用性和响应时间结果
 const proxyAvailabilityCache = {};
+const proxyResponseTimeCache = {};
 // 重试次数
 const MAX_RETRIES = 3;
 // 记录代理失败次数
@@ -237,8 +224,49 @@ let proxyFailureCount = 0;
 // 最大代理失败次数，超过该次数则切换到直连
 const MAX_PROXY_FAILURES = 3;
 
+// 检查代理是否可用并记录响应时间
+function checkProxy(proxy) {
+    const startTime = Date.now();
+    try {
+        // 这里需要替换为实际的网络请求逻辑来检测代理可用性
+        // 示例：尝试连接一个已知的公共网站
+        // 可使用 XMLHttpRequest 或其他网络请求库
+        const result = true;
+        const endTime = Date.now();
+        proxyResponseTimeCache[proxy] = endTime - startTime;
+        return result;
+    } catch (error) {
+        proxyResponseTimeCache[proxy] = Infinity;
+        return false;
+    }
+}
+
+// 检查代理是否可用
+function isProxyAvailable(proxy) {
+    if (proxyAvailabilityCache[proxy] === undefined) {
+        proxyAvailabilityCache[proxy] = checkProxy(proxy);
+    }
+    return proxyAvailabilityCache[proxy];
+}
+
+// 选择最优代理
+function selectBestProxy() {
+    const proxies = [socks5Proxy, httpProxy];
+    const availableProxies = proxies.filter(isProxyAvailable);
+    if (availableProxies.length === 0) {
+        return null;
+    }
+    return availableProxies.reduce((best, current) => {
+        return proxyResponseTimeCache[current] < proxyResponseTimeCache[best] ? current : best;
+    });
+}
+
 // 智能路由判断函数
 function FindProxyForURL(url, host) {
+    // 获取 User - Agent
+    const userAgent = navigator.userAgent || "";
+    const isMobile = /Mobile|Android|iPhone|iPad|iPod/i.test(userAgent);
+
     // 内网地址直连
     const ip = dnsResolveCached(host);
     if (isInPrivateNetwork(ip)) {
@@ -256,17 +284,16 @@ function FindProxyForURL(url, host) {
     }
 
     for (let retry = 0; retry < MAX_RETRIES; retry++) {
-        let selectedProxy = null;
-        // 优先尝试 socks5 代理
-        if (isProxyAvailable(socks5Proxy)) {
-            selectedProxy = socks5Proxy;
-        } else if (isProxyAvailable(httpProxy)) {
-            selectedProxy = httpProxy;
-        }
-
+        const selectedProxy = selectBestProxy();
         if (selectedProxy) {
-            // 确保常见 App 域名使用代理
-            if (commonAppDomains.some((domain) => shExpMatch(host, `*${domain}`))) {
+            // 针对移动设备优化
+            if (isMobile) {
+                // 可以根据移动设备的特点，如流量限制、网络稳定性等，调整代理策略
+                // 例如，优先选择响应时间更短的代理
+            }
+
+            // 确保TikTok使用代理
+            if (shExpMatch(host, "*.tiktok.com")) {
                 return url.startsWith("http:") || url.startsWith("https:")
                    ? selectedProxy
                     : direct;
@@ -280,6 +307,17 @@ function FindProxyForURL(url, host) {
                 fashion, sports, home, edTech, logistics, adMarketing
             ];
             if (allDomainGroups.some((group) => matchIndustryDomain(host, group))) {
+                return url.startsWith("http:") || url.startsWith("https:")
+                   ? selectedProxy
+                    : direct;
+            }
+
+            // 确保常见 App 域名使用代理
+            const appDomains = [
+                ".whatsapp.net", ".instagram.com", ".facebook.net", ".twitter.com", ".tiktok.com",
+                ".snapchat.com", ".telegram.org", ".line.me", ".discord.com", ".viber.com"
+            ];
+            if (appDomains.some((domain) => shExpMatch(host, `*${domain}`))) {
                 return url.startsWith("http:") || url.startsWith("https:")
                    ? selectedProxy
                     : direct;
