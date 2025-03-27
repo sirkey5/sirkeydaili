@@ -14,10 +14,11 @@ function FindProxyForURL(url, host) {
         "*.cn", "*.com.cn", "*.gov.cn", "*.org.cn", /* 其他中国域名 */
     ];
 
-    // 代理域名列表
+    // 代理域名列表(全面覆盖)
     const PROXY_DOMAINS = [
-        "*.google.com", "*.youtube.com", "*.facebook.com", /* 其他国际域名 */
-    ];
+        "*", // 默认所有域名走代理
+        "*.google.com", "*.youtube.com", "*.facebook.com", "*.twitter.com",
+        "*.github.com", "*.gitlab.com", "*.
 
     // 移动应用专用域名(优化版)
     const MOBILE_APP_DOMAINS = [
@@ -58,16 +59,17 @@ function FindProxyForURL(url, host) {
         const proxies = [
             SOCKS5_PROXY.split(';')[0],
             HTTP_PROXY.split(';')[0],
-            SOCKS5_PROXY.split(';')[1]
+            SOCKS5_PROXY.split(';')[1],
+            HTTP_PROXY.split(';')[1] // 添加HTTP备用代理
         ];
         
-        // 测试所有代理的响应时间
-        const proxyResults = proxies.map(proxy => {
+        // 并行测试所有代理的响应时间
+        const proxyResults = await Promise.all(proxies.map(async proxy => {
             const startTime = Date.now();
-            const isAlive = isProxyAlive(proxy);
+            const isAlive = await isProxyAlive(proxy);
             const latency = Date.now() - startTime;
             return { proxy, isAlive, latency };
-        });
+        }));
         
         // 优先选择可用且延迟最低的代理
         const availableProxies = proxyResults
