@@ -1,7 +1,7 @@
 /******************** 基础配置 ********************/
-// 唯一的 http 代理配置，端口统一为 10808
+// 唯一的 http 代理配置
 const httpProxy = "PROXY 192.168.1.55:10808; DIRECT";
-// 唯一的 socks5 代理配置，端口统一为 10808
+// 唯一的 socks5 代理配置
 const socks5Proxy = "SOCKS5 192.168.1.55:10808; DIRECT";
 // 直连配置
 const direct = "DIRECT";
@@ -195,6 +195,20 @@ const directDomains = [
     "baidu.com", "baidupcs.com", "baidustatic.com", "bdimg.com", "bdstatic.com", "duckduckgo.com"
 ];
 
+// 常见 App 域名列表，进一步补充
+const commonAppDomains = [
+    ".tiktok.com", ".tiktokcdn.com", ".bytedance.com",
+    ".whatsapp.net", ".whatsapp.com",
+    ".instagram.com", ".instagram.net",
+    ".facebook.com", ".facebook.net",
+    ".twitter.com", ".x.com",
+    ".snapchat.com",
+    ".telegram.org",
+    ".line.me",
+    ".discord.com",
+    ".viber.com"
+];
+
 // 缓存DNS解析结果，避免重复解析
 const dnsCache = {};
 function dnsResolveCached(host) {
@@ -251,8 +265,8 @@ function FindProxyForURL(url, host) {
         }
 
         if (selectedProxy) {
-            // 确保TikTok使用代理
-            if (shExpMatch(host, "*.tiktok.com")) {
+            // 确保常见 App 域名使用代理
+            if (commonAppDomains.some((domain) => shExpMatch(host, `*${domain}`))) {
                 return url.startsWith("http:") || url.startsWith("https:")
                    ? selectedProxy
                     : direct;
@@ -266,17 +280,6 @@ function FindProxyForURL(url, host) {
                 fashion, sports, home, edTech, logistics, adMarketing
             ];
             if (allDomainGroups.some((group) => matchIndustryDomain(host, group))) {
-                return url.startsWith("http:") || url.startsWith("https:")
-                   ? selectedProxy
-                    : direct;
-            }
-
-            // 确保常见 App 域名使用代理
-            const appDomains = [
-                ".whatsapp.net", ".instagram.com", ".facebook.net", ".twitter.com", ".tiktok.com",
-                ".snapchat.com", ".telegram.org", ".line.me", ".discord.com", ".viber.com"
-            ];
-            if (appDomains.some((domain) => shExpMatch(host, `*${domain}`))) {
                 return url.startsWith("http:") || url.startsWith("https:")
                    ? selectedProxy
                     : direct;
