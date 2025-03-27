@@ -1,7 +1,7 @@
 function FindProxyForURL(url, host) {
     // ======== 核心配置参数 ========
     var MAIN_PROXY = "PROXY 192.168.1.55:10808";       // 主代理（HTTP/HTTPS）
-    var BACKUP_PROXY = "SOCKS 192.168.1.55:10809";     // 备用代理（SOCKS5）
+    var BACKUP_PROXY = "SOCKS 192.168.1.55:10808";     // 备用代理（SOCKS5）
     var DIRECT_FALLBACK = "DIRECT";                    // 直连备用
 
     // ======== 智能分流逻辑 ========
