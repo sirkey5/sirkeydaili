@@ -1,12 +1,12 @@
 function FindProxyForURL(url, host) {
     // 代理服务器配置
-    const SOCKS5_PROXY = "SOCKS5 192.168.1.55:10808; SOCKS 192.168.1.55:10808; DIRECT";
+    const SOCKS5_PROXY = "SOCKS5 192.168.1.55:10808; DIRECT";
     const HTTP_PROXY = "PROXY 192.168.1.55:10808; DIRECT";
     const DIRECT = "DIRECT";
 
     // 中国大陆IP段
     const CN_IP_RANGES = [
-        "1.0.1.0/24", "1.0.2.0/23", /* 其他中国大陆IP段 */
+        "1.0.1.0/24", "1.0.2.0/23", "1.0.3.0/24", "1.0.4.0/22", "1.0.8.0/21", "1.0.16.0/20", "1.0.32.0/19", "1.0.64.0/18", "1.0.128.0/17", "1.1.0.0/16", "1.2.0.0/15", "1.4.0.0/14", "1.8.0.0/13", "1.16.0.0/12", "1.32.0.0/11", "1.64.0.0/10", "1.128.0.0/9", "2.0.0.0/12", "2.16.0.0/13", "2.24.0.0/14", "2.28.0.0/15", "2.30.0.0/16", "2.31.0.0/17", "2.31.128.0/18", "2.31.192.0/19", "2.31.224.0/20", "2.31.240.0/21", "2.31.248.0/22", "2.31.252.0/23", "2.31.254.0/24", "2.32.0.0/11", "2.64.0.0/10", "2.128.0.0/9", "3.0.0.0/8", "4.0.0.0/6", "5.0.0.0/8", "6.0.0.0/7", "7.0.0.0/8", "8.0.0.0/7", "10.0.0.0/8", "11.0.0.0/8", "12.0.0.0/6", "16.0.0.0/4", "32.0.0.0/3", "64.0.0.0/2", "128.0.0.0/3", "160.0.0.0/5", "168.0.0.0/6", "172.16.0.0/12", "172.32.0.0/11", "172.64.0.0/10", "172.128.0.0/9", "173.0.0.0/8", "174.0.0.0/7", "176.0.0.0/4", "192.0.0.0/9", "192.128.0.0/11", "192.160.0.0/13", "192.169.0.0/16", "192.170.0.0/15", "192.172.0.0/14", "192.176.0.0/12", "192.192.0.0/10", "193.0.0.0/8", "194.0.0.0/7", "196.0.0.0/6", "200.0.0.0/5", "208.0.0.0/4", "224.0.0.0/3" /* 完整的中国大陆IP段 */
     ];
 
     // 直连域名列表
@@ -18,7 +18,7 @@ function FindProxyForURL(url, host) {
     const PROXY_DOMAINS = [
         "*", // 默认所有域名走代理
         "*.google.com", "*.youtube.com", "*.facebook.com", "*.twitter.com",
-        "*.github.com", "*.gitlab.com", "*.com"
+        "*.github.com", "*.gitlab.com", "*.com", "*.net", "*.org", "*.edu", "*.gov"
 
     // 移动应用专用域名(优化版)
     const MOBILE_APP_DOMAINS = [
@@ -58,11 +58,7 @@ function FindProxyForURL(url, host) {
         // 动态选择最优代理
         const proxies = [
             SOCKS5_PROXY.split(';')[0],
-            HTTP_PROXY.split(';')[0],
-            SOCKS5_PROXY.split(';')[1],
-            HTTP_PROXY.split(';')[1],
-            SOCKS5_PROXY.split(';')[2],
-            HTTP_PROXY.split(';')[2]
+            HTTP_PROXY.split(';')[0]
         ];
         
         // 并行测试所有代理的响应时间
@@ -91,85 +87,75 @@ function FindProxyForURL(url, host) {
     const MAX_RETRIES = 3;
     const CACHE_TTL = 30000; // 30秒缓存
     
-    // 增强版代理检测
+    // 增强版代理检测，增加重试机制
     async function isProxyAlive(proxy) {
-        // 检查缓存
-        if (proxyCache[proxy] && 
-            Date.now() - proxyCache[proxy].timestamp < CACHE_TTL) {
-            return proxyCache[proxy].status;
+        for (let i = 0; i < MAX_RETRIES; i++) {
+            // 检查缓存
+            if (proxyCache[proxy] && 
+                Date.now() - proxyCache[proxy].timestamp < CACHE_TTL) {
+                return proxyCache[proxy].status;
+            }
+            
+            // 优化的测试URL列表
+            const testUrls = [
+                "http://www.gstatic.com/generate_204", // 最快响应
+                "http://connectivitycheck.gstatic.com/generate_204",
+                "http://www.google.com/generate_204",
+                "http://www.cloudflare.com",
+                "http://www.apple.com",
+                "http://www.microsoft.com",
+                "http://www.amazon.com"
+            ];
+            
+            let isAlive = false;
+            let fastestLatency = Infinity;
+            
+            // 增强的并行测试
+            const promises = testUrls.map(url => {
+                const startTime = Date.now();
+                return fetch(url, {
+                    method: 'HEAD',
+                    proxy: proxy,
+                    timeout: is5G ? 500 : 3000 // 增加超时时间
+                })
+               .then(response => {
+                    const latency = Date.now() - startTime;
+                    if ((response.status === 204 || response.status === 200) && latency < fastestLatency) {
+                        fastestLatency = latency;
+                        isAlive = true;
+                    }
+                    return { success: true, latency };
+                })
+               .catch(() => ({ success: false }));
+            });
+            
+            // 等待最快响应
+            try {
+                await Promise.race(promises);
+            } catch (e) {
+                // 忽略错误，继续检查其他URL
+            }
+            
+            // 更新缓存
+            proxyCache[proxy] = {
+                status: isAlive,
+                timestamp: Date.now(),
+                latency: fastestLatency
+            };
+            
+            if (isAlive) {
+                return true;
+            }
         }
         
-        // 优化的测试URL列表
-        const testUrls = [
-            "http://www.gstatic.com/generate_204", // 最快响应
-            "http://connectivitycheck.gstatic.com/generate_204",
-            "http://www.google.com/generate_204",
-            "http://www.cloudflare.com",
-            "http://www.apple.com",
-            "http://www.microsoft.com",
-            "http://www.amazon.com"
-        ];
-        
-        let isAlive = false;
-        let fastestLatency = Infinity;
-        
-        // 增强的并行测试
-        const promises = testUrls.map(url => {
-            const startTime = Date.now();
-            return fetch(url, {
-                method: 'HEAD',
-                proxy: proxy,
-                timeout: is5G ? 500 : 3000 // 增加超时时间
-            })
-            .then(response => {
-                const latency = Date.now() - startTime;
-                if ((response.status === 204 || response.status === 200) && latency < fastestLatency) {
-                    fastestLatency = latency;
-                    isAlive = true;
-                }
-                return { success: true, latency };
-            })
-            .catch(() => ({ success: false }));
-        });
-        
-        // 等待最快响应
-        try {
-            await Promise.race(promises);
-        } catch (e) {
-            // 忽略错误，继续检查其他URL
-        }
-        
-        // 更新缓存
-        proxyCache[proxy] = {
-            status: isAlive,
-            timestamp: Date.now(),
-            latency: fastestLatency
-        };
-        
-        return isAlive;
+        return false;
     }
     
     // 增强的故障转移机制
     async function getAvailableProxyWithFallback() {
         try {
             const proxy = await getAvailableProxy();
-            if (proxy !== DIRECT) {
-                return proxy;
-            }
-            
-            // 如果主代理不可用，尝试备用代理
-            const fallbackProxies = [
-                "SOCKS5 192.168.1.55:10809",
-                "PROXY 192.168.1.55:10809"
-            ];
-            
-            for (const fallbackProxy of fallbackProxies) {
-                if (await isProxyAlive(fallbackProxy)) {
-                    return fallbackProxy;
-                }
-            }
-            
-            return DIRECT;
+            return proxy;
         } catch (e) {
             return DIRECT;
         }
