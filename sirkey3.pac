@@ -2,41 +2,31 @@
 function FindProxyForURL(url, host) {
 
     // === 定义代理服务器 ===
-    const PROXY_SERVER = "SOCKS5 192.168.1.55:10808; PROXY 192.168.1.55:10808; DIRECT"; // 优先尝试SOCKS5，次HTTP，最后直连
+    const PROXY_SERVER = "SOCKS5 192.168.1.55:10808; PROXY 192.168.1.55:10808; DIRECT";
     const DIRECT = "DIRECT";
 
     // === 中国域名直连规则 ===
-    const CN_DOMAINS = [
-        "cn", "com.cn", "gov.cn", "edu.cn", "org.cn", "net.cn", 
-        "mil.cn", "ac.cn", "ah.cn", "bj.cn", "cq.cn", "fj.cn", 
-        "gd.cn", "gs.cn", "gz.cn", "ha.cn", "hb.cn", "he.cn", 
-        "hi.cn", "hk.cn", "hl.cn", "hn.cn", "jl.cn", "js.cn", 
-        "jx.cn", "ln.cn", "nm.cn", "nx.cn", "qh.cn", "sc.cn", 
-        "sd.cn", "sh.cn", "sx.cn", "tj.cn", "tw.cn", "xj.cn", 
-        "xz.cn", "yn.cn", "zj.cn", "mo.cn", "mac.cn", "hkg.cn", 
-        "tpe.cn", "localhost", "127.0.0.1"
-    ];
+    const CN_DOMAINS = ["cn", "localhost", "127.0.0.1"];
 
     // === 内网直连规则 ===
     if (
-        isPlainHostName(host) || 
+        isPlainHostName(host) || // 直接 IP 或无域名主机
         shExpMatch(host, "192.168.*") || 
         shExpMatch(host, "10.*") || 
-        shExpMatch(host, "172.16.* - 172.31.*") || 
+        (shExpMatch(host, "172.1[6-9].*") || shExpMatch(host, "172.[2-3][0-9].*")) || 
         shExpMatch(host, "*.local") || 
         shExpMatch(host, "*.internal") || 
         shExpMatch(host, "*.intranet") || 
         shExpMatch(host, "*.home") || 
         shExpMatch(host, "*.lan") || 
-        dnsDomainIs(host, "local") || 
         dnsDomainIs(host, "localhost")
     ) {
         return DIRECT;
     }
 
     // === 中国域名直连 ===
-    for (var i = 0; i < CN_DOMAINS.length; i++) {
-        if (dnsDomainIs(host, CN_DOMAINS[i])) {
+    for (const domain of CN_DOMAINS) {
+        if (dnsDomainIs(host, domain)) {
             return DIRECT;
         }
     }
