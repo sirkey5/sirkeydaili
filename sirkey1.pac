@@ -4,7 +4,7 @@ var direct = 'DIRECT';
 var directDomains = ["gov.cn","115.com","123pan.com","123957.com","baidu.com","baidupcs.com","baidustatic.com","bdimg.com","bdstatic.com","cdn.bcebos.com","cdnnode.cn","qq.com","weixinbridge.com"];
 var domainsUsingProxy = ["google.com.hk","ent.com","youtube.com","googlevideo.com","ytimg.com","github.com","github.io","githubusercontent.com","githubassets.com","bing.com","bing.cn","bing.net"];
 var localTlds = [".test",".localhost"];
-var cidrs = '15,22,~3,~7,38,43,~c,51,6d,~f,73,92,~e,ac,ba,dc,~e,e1,~5,~7,~9,~d,~f,f6,103,~8,123,~6,~d,13a,177,~b,18a,1b1,~c,1c0,~5,~d,1d1,~2,~6,~6,~9,1e0,~3,~5,241,2a8,~a,~d,~e,2b4,~7,~b,2dc,~f,2e';
+var cidrs = '15,22,~3,~7,38,43,~c,51,6d,~f,73,92,~e,ac,ba,dc,~e,e1,~5,~7,~9,~d,~f,f6,103,~8,123,~6,~d,13a,177,~b,18a,1b1,~c,1c0,~5,~d,1d1,~2,~6,~6,~9,1e0,~3,~5,241,2a8,~a,~d,~e,2b4,~7,~b,2dc,~f,2e'[...];
 
 function isIpAddress(ip) {
     return /^\d{1,3}(\.\d{1,3}){3}$/.test(ip) || /^([0-9a-fA-F]{0,4}:){1,7}[0-9a-fA-F]{0,4}$/.test(ip);
@@ -111,7 +111,13 @@ function isPrivateIp(ip) {
         /^::$/.test(ip);
 }
 
-// 新增函数：检查代理服务器是否可用
+// Check if the device is mobile
+function isMobile() {
+    var userAgent = navigator.userAgent || navigator.vendor || window.opera;
+    return /android|avantgo|blackberry|bolt|boost|cricket|docomo|fone|hiptop|mini|mobi|palm|phone|pie|tablet|up\.browser|up\.link|webos|wos/i.test(userAgent);
+}
+
+// New function: check if the proxy server is available
 function isProxyAvailable() {
     var proxyTestUrl = "http://www.google.com/generate_204";
     var xhr = new XMLHttpRequest();
