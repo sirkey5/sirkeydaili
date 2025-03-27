@@ -18,7 +18,7 @@ function FindProxyForURL(url, host) {
     const PROXY_DOMAINS = [
         "*", // 默认所有域名走代理
         "*.google.com", "*.youtube.com", "*.facebook.com", "*.twitter.com",
-        "*.github.com", "*.gitlab.com", "*.
+        "*.github.com", "*.gitlab.com", "*.com"
 
     // 移动应用专用域名(优化版)
     const MOBILE_APP_DOMAINS = [
@@ -54,7 +54,7 @@ function FindProxyForURL(url, host) {
     }
 
     // 智能代理检测与故障转移
-    function getAvailableProxy() {
+    async function getAvailableProxy() {
         // 动态选择最优代理
         const proxies = [
             SOCKS5_PROXY.split(';')[0],
@@ -90,7 +90,7 @@ function FindProxyForURL(url, host) {
     const CACHE_TTL = 30000; // 30秒缓存
     
     // 优化版并行代理检测
-    function isProxyAlive(proxy) {
+    async function isProxyAlive(proxy) {
         // 检查缓存
         if (proxyCache[proxy] && 
             Date.now() - proxyCache[proxy].timestamp < CACHE_TTL) {
