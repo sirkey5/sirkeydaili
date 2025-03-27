@@ -1,14 +1,13 @@
 var proxy = "PROXY 192.168.1.55:10808";
-
 var direct = 'DIRECT';
 
-var directDomains = ["gov.cn","115.com","123pan.com","123957.com","baidu.com","baidupcs.com","baidustatic.com","bdimg.com","bdstatic.com","cdn.bcebos.com","cdnnode.cn","qq.com","weixinbridge.com","gtimg.com"];
+var directDomains = ["gov.cn","115.com","123pan.com","123957.com","baidu.com","baidupcs.com","baidustatic.com","bdimg.com","bdstatic.com","cdn.bcebos.com","cdnnode.cn","qq.com","weixinbridge.com"];
 
-var domainsUsingProxy = ["google.com.hk","ent.com","youtube.com","googlevideo.com","ytimg.com","github.com","github.io","githubusercontent.com","githubassets.com","bing.com","bing.cn","bing.net","bing.com.cn"];
+var domainsUsingProxy = ["google.com.hk","ent.com","youtube.com","googlevideo.com","ytimg.com","github.com","github.io","githubusercontent.com","githubassets.com","bing.com","bing.cn","bing.net","bilibili.com","tiktok.com"];
 
 var localTlds = [".test",".localhost"];
 
-var cidrs = '15,22,~3,~7,38,43,~c,51,6d,~f,73,92,~e,ac,ba,dc,~e,e1,~5,~7,~9,~d,~f,f6,103,~8,123,~6,~d,13a,177,~b,18a,1b1,~c,1c0,~5,~d,1d1,~2,~6,~6,~9,1e0,~3,~5,241,2a8,~a,~d,~e,2b4,~7,~b,2dc,~f,2ed,36f,~9,3c3,3fe,3ff';
+var cidrs = '15,22,~3,~7,38,43,~c,51,6d,~f,73,92,~e,ac,ba,dc,~e,e1,~5,~7,~9,~d,~f,f6,103,~8,123,~6,~d,13a,177,~b,18a,1b1,~c,1c0,~5,~d,1d1,~2,~6,~6,~9,1e0,~3,~5,241,2a8,~a,~d,~e,2b4,~7,~b,2dc,~f,2e';
 
 function isIpAddress(ip) {
     return /^\d{1,3}(\.\d{1,3}){3}$/.test(ip) || /^([0-9a-fA-F]{0,4}:){1,7}[0-9a-fA-F]{0,4}$/.test(ip);
@@ -46,31 +45,23 @@ RadixTree.prototype.search = function(string) {
 
 function ipToBinary(ip) {
     var bin = ''
-    // Check if it's IPv4
     if (/^\d{1,3}(\.\d{1,3}){3}$/.test(ip)) {
         bin = ip.split('.').map(function(num) {
             return ("00000000" + parseInt(num, 10).toString(2)).slice(-8);
         }).join('');
     } else if (/^([0-9a-fA-F]{0,4}:){1,7}[0-9a-fA-F]{0,4}$/.test(ip)) {
-        // Expand the IPv6 address if it contains '::'
         var parts = ip.split('::');
         var left = parts[0] ? parts[0].split(':') : [];
         var right = parts[1] ? parts[1].split(':') : [];
-        
-        // Calculate the number of zero groups to insert
         var zeroGroups = 8 - (left.length + right.length);
-        
-        // Create the full address by inserting zero groups
         var fullAddress = left.concat(Array(zeroGroups + 1).join('0').split('')).concat(right);
-        
-        // Convert each group to binary and pad to 16 bits
         bin = fullAddress.map(function(group) {
             return ("0000000000000000" + parseInt(group || '0', 16).toString(2)).slice(-16);
         }).join('');
     }
     return bin.replace(/^0+/, '');
 }
-  
+
 function isInDirectDomain(host) {
     for (var i = 0; i < directDomains.length; i++) {
         var domain = directDomains[i];
@@ -92,7 +83,6 @@ function isInProxyDomain(host) {
 }
 
 function isLocalTestDomain(domain) {
-    // Chrome uses .test as testing gTLD.
     var tld = domain.substring(domain.lastIndexOf('.'));
     if (tld === domain) {
         return false;
@@ -102,7 +92,6 @@ function isLocalTestDomain(domain) {
     });
 }
 
-/* https://github.com/frenchbread/private-ip */
 function isPrivateIp(ip) {
     return /^(::f{4}:)?10\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})$/i.test(ip) ||
         /^(::f{4}:)?192\.168\.([0-9]{1,3})\.([0-9]{1,3})$/i.test(ip) ||
