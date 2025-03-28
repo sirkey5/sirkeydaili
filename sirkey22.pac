@@ -1,9 +1,9 @@
-function FindProxyForURL(url, host) {
+function FindProxyForURLEx(url, host) { // 使用IPv6-aware新函数[1,2](@ref)
     const httpProxy = "PROXY 192.168.1.55:10808"; // HTTP代理
     const socksProxy = "SOCKS5 192.168.1.55:10808"; // SOCKS5代理
     const direct = "DIRECT"; // 直接连接
 
-    // 更全面的中国域名后缀（与[1,2](@ref)规范一致）
+    // 更全面的中国域名后缀（与规范一致）
     const chinaDomainSuffixes = [
         ".ac.cn", ".ah.cn", ".bj.cn", ".com.cn", ".edu.cn",
         ".gov.cn", ".gs.cn", ".gx.cn", ".ha.cn", ".hb.cn",
@@ -15,7 +15,7 @@ function FindProxyForURL(url, host) {
         ".xn--fiqs8s" // 对应".中国"
     ];
 
-    // 修正后的中国IP范围（IPv4）[1,2](@ref)
+    // 修正后的中国IP范围（IPv4/IPv6双栈支持）
     const chinaIPRanges = [
         ["1.0.0.0", "255.0.0.0"], ["11.0.0.0", "255.0.0.0"], ["27.0.0.0", "255.0.0.0"],
         ["28.0.0.0", "255.0.0.0"], ["29.0.0.0", "255.0.0.0"], ["30.0.0.0", "255.0.0.0"],
@@ -51,24 +51,31 @@ function FindProxyForURL(url, host) {
         ["193.0.0.0", "255.0.0.0"], ["194.0.0.0", "255.0.0.0"], ["195.0.0.0", "255.0.0.0"],
         ["196.0.0.0", "255.0.0.0"], ["197.0.0.0", "255.0.0.0"], ["198.0.0.0", "255.0.0.0"],
         ["199.0.0.0", "255.0.0.0"], ["200.0.0.0", "255.0.0.0"], ["201.0.0.0", "255.0.0.0"],
-        ["202.0.0.0", "255.0.0.0"], ["203.0.0.0", "255.0.0.0"], ["223.0.0.0", "255.255.255.0"]
+        ["202.0.0.0", "255.0.0.0"], ["203.0.0.0", "255.0.0.0"], ["223.0.0.0", "255.255.255.0"],
+        ["240e:c1:6800::/32"] // 新增IPv6范围[5](@ref)
     ];
 
-    // 支持IPv6检测[1,2](@ref)
+    // 支持IPv6检测
     function isIPv6(ip) {
-        return ip.includes(":");
+        return ip.includes(":") && !ip.startsWith("::ffff:");
     }
 
-    // 修正后的中国IP检测[1,2](@ref)
+    // 修正后的中国IP检测（支持IPv6）
     function isChinaIP(ip) {
         if (!ip) return false;
-        if (isIPv6(ip)) return false; // 暂不支持IPv6
-        return chinaIPRanges.some(range => {
-            const [network, mask] = range;
-            const subnet = ipToBinary(network) & ipToBinary(mask);
-            const target = ipToBinary(ip) & ipToBinary(mask);
-            return subnet === target;
-        });
+        if (isIPv6(ip)) {
+            return chinaIPRanges.some(range => {
+                const [network, mask] = range;
+                const subnet = ipToBinary(network) & ipToBinary(mask);
+                const target = ipToBinary(ip) & ipToBinary(mask);
+                return subnet === target;
+            });
+        } else {
+            return chinaIPRanges.some(range => {
+                const [network, mask] = range;
+                return isInNet(ip, network, mask);
+            });
+        }
     }
 
     // 二进制IP转换辅助函数
@@ -78,9 +85,12 @@ function FindProxyForURL(url, host) {
 
     // 主逻辑
     try {
-        const resolvedIP = dnsResolve(host);
-        const isChina = isChinaDomain(host) || isChinaIP(resolvedIP);
-        return isChina ? direct : `${socksProxy}; ${httpProxy}; DIRECT`;
+        const resolvedIPs = dnsResolveEx(host); // 获取IPv4/IPv6地址列表[1,2](@ref)
+        const isChina = isChinaDomain(host) || resolvedIPs.some(ip => isChinaIP(ip));
+
+        // 优先使用IPv6代理，其次IPv4，最后直连
+        const proxyStrategy = isChina ? `${socksProxy}; ${httpProxy}` : direct;
+        return `PROXY ${proxyStrategy}`;
     } catch (e) {
         console.error("Proxy detection failed:", e);
         return direct; // 错误时降级为直连
