@@ -1,250 +1,118 @@
-// 移动设备增强版 PAC 脚本
-// 优化了 Android WebView 和 iOS Safari 的兼容性
-// 新增蜂窝网络检测和低功耗优化
-// 支持多代理协议切换
-// 增强了移动端错误处理
+// 代理配置
+var proxy = "PROXY 192.168.1.55:10808";
+var direct = 'DIRECT';
 
-// 核心配置（根据移动设备特性调整）
-const PROXY = "PROXY 192.168.1.55:10808; SOCKS5 192.168.1.55:10809";
-const DIRECT = "DIRECT";
-const MAX_RETRIES = 3;
-const TIMEOUT = 3000;
-const CELLULAR_WARNING = 25 * 1024 * 1024; // 25MB 蜂窝网络流量阈值
+// 中国域名列表
+var directDomains = [
+    "cloudflare.com", "gov.cn", "115.com", "123pan.com", "123957.com", "baidu.com", "baidupcs.com", "baidustatic.com", "bdimg.com", "bdstatic.com", "cdn.bcebos.com", "cdnnode.cn", "qq.com", "weixinbridge.com", "gtimg.com", "gtimg.cn", "qstatic.com", "cdn-go.cn", "qpic.cn", "qlogo.cn", "qqmail.com", "tencent.com", "bilibili.com", "hdslb.com", "bilivideo.cn", "biliapi.net", "iqiyi.com", "iqiyipic.com", "qy.net", "71edge.com", "youku.com", "ykimg.com", "tower.im", "weibo.com", "weibo.cn", "weibocdn.com", "sinaimg.cn", "sinajs.cn", "sina.cn", "taobao.com", "aliyun.com", "aliyuncs.com", "alicdn.com", "alibabausercontent.com", "alipay.com", "alipayobjects.com", "aliyundrive.com", "dingtalk.com", "mmstat.com", "tmall.com", "jd.com", "360buyimg.com", "300hu.com", "126.com", "163.com", "189.cn", "21cn.com", "139.com", "10086.cn", "pinduoduo.com", "pddpic.com", "zijieapi.com", "amemv.com", "ecombdapi.com", "baike.com", "byteimg.com", "douyin.com", "douyinpic.com", "douyinstatic.com", "douyinvod.com", "supercachenode.com", "bytedance.com", "bytedanceapi.com", "bytescm.com", "bytecdn.cn", "byteoc.com", "bytednsdoc.com", "bytetcc.com", "feishu.cn", "feishucdn.com", "toutiao.com", "toutiaoimg.com", "toutiaostatic.com", "yhgfb-cn-static.com", "cmbchina.com", "mi.com", "xiaomi.com", "amap.com", "autonavi.com", "meituan.com", "meituan.net", "sogou.com", "dianping.com", "quark.cn", "wps.cn", "wpscdn.cn", "xiaohongshu.com", "xhscdn.com", "push.apple.com", "setup.icloud.com", "appldnld.apple.com", "oscdn.apple.com", "osrecovery.apple.com", "swcdn.apple.com", "swdist.apple.com", "swdownload.apple.com", "swscan.apple.com", "updates-http.cdn-apple.com", "updates.cdn-apple.com", "audiocontentdownload.apple.com", "devimages-cdn.apple.com", "devstreaming-cdn.apple.com", "oscdn.apple.com", "certs.apple.com", "ocsp.apple.com", "ocsp2.apple.com", "valid.apple.com", "appleid.cdn-apple.com", "icloud.com.cn", "guzzoni.apple.com", "app-site-association.cdn-apple.com", "smp-device-content.apple.com", "idv.cdn-apple.com", "adcdownload.apple.com", "alpdownloadit.cdn-apple.com", "bricks.cdn-apple.com", "self.events.data.microsoft.com", "mobile.events.data.microsoft.com", "browser.events.data.microsoft.com", "ocsp.globalsign.com", "ocsp2.globalsign.com", "ocsp.digicert.cn", "ocsp.dcocsp.cn", "api.onedrive.com", "storage.live.com", "skyapi.live.net", "roaming.officeapps.live.com", "blob.core.windows.net", "default.exp-tas.com"
+];
 
-// 移动设备友好的中国IP库（精简版示例）
-const CN_IPV4 = [
-    "101.0.0.0/16", "103.0.0.0/16", "111.0.0.0/16",
-    "112.0.0.0/16", "114.0.0.0/16", "115.0.0.0/16",
-    "116.0.0.0/16", "117.0.0.0/16", "118.0.0.0/16",
-    "119.0.0.0/16", "120.0.0.0/16", "121.0.0.0/16",
-    "122.0.0.0/16", "123.0.0.0/16", "124.0.0.0/16",
-    "125.0.0.0/16", "126.0.0.0/16", "127.0.0.0/8",
-    "129.0.0.0/16", "134.0.0.0/16", "135.0.0.0/16",
-    "136.0.0.0/16", "137.0.0.0/16", "138.0.0.0/16",
-    "139.0.0.0/16", "140.0.0.0/16", "141.0.0.0/16",
-    "142.0.0.0/16", "143.0.0.0/16", "144.0.0.0/16",
-    "145.0.0.0/16", "146.0.0.0/16", "147.0.0.0/16",
-    "148.0.0.0/16", "149.0.0.0/16", "150.0.0.0/16",
-    "151.0.0.0/16", "152.0.0.0/16", "153.0.0.0/16",
-    "154.0.0.0/16", "155.0.0.0/16", "156.0.0.0/16",
-    "157.0.0.0/16", "158.0.0.0/16", "159.0.0.0/16",
-    "160.0.0.0/16", "161.0.0.0/16", "162.0.0.0/16",
-    "163.0.0.0/16", "164.0.0.0/16", "165.0.0.0/16",
-    "166.0.0.0/16", "167.0.0.0/16", "168.0.0.0/16",
-    "169.254.0.0/16", "170.0.0.0/16", "171.0.0.0/16",
-    "172.16.0.0/12", "173.0.0.0/16", "174.0.0.0/16",
-    "175.0.0.0/16", "176.0.0.0/16", "177.0.0.0/16",
-    "178.0.0.0/16", "179.0.0.0/16", "180.0.0.0/16",
-    "181.0.0.0/16", "182.0.0.0/16", "183.0.0.0/16",
-    "184.0.0.0/16", "185.0.0.0/16", "186.0.0.0/16",
-    "187.0.0.0/16", "188.0.0.0/16", "189.0.0.0/16",
-    "190.0.0.0/16", "191.0.0.0/16", "192.0.0.0/24",
-    "192.168.0.0/16", "193.0.0.0/16", "194.0.0.0/16",
-    "195.0.0.0/16", "196.0.0.0/16", "197.0.0.0/16",
-    "198.0.0.0/16", "199.0.0.0/16", "200.0.0.0/16",
-    "201.0.0.0/16", "202.0.0.0/16", "203.0.0.0/16",
-    "204.0.0.0/16", "205.0.0.0/16", "206.0.0.0/16",
-    "207.0.0.0/16", "208.0.0.0/16", "209.0.0.0/16",
-    "210.0.0.0/16", "211.0.0.0/16", "212.0.0.0/16",
-    "213.0.0.0/16", "214.0.0.0/16", "215.0.0.0/16",
-    "216.0.0.0/16", "217.0.0.0/16", "218.0.0.0/16",
-    "219.0.0.0/16", "220.0.0.0/16", "221.0.0.0/16",
-    "222.0.0.0/16", "223.0.0.0/16", "224.0.0.0/4",
-    "225.0.0.0/4", "226.0.0.0/4", "227.0.0.0/4",
-    "228.0.0.0/4", "229.0.0.0/4", "230.0.0.0/4",
-    "231.0.0.0/4", "232.0.0.0/4", "233.0.0.0/4",
-    "234.0.0.0/4", "235.0.0.0/4", "236.0.0.0/4",
-    "237.0.0.0/4", "238.0.0.0/4", "239.0.0.0/4",
-    "240.0.0.0/4", "241.0.0.0/4", "242.0.0.0/4",
-    "243.0.0.0/4", "244.0.0.0/4", "245.0.0.0/4",
-    "246.0.0.0/4", "247.0.0.0/4", "248.0.0.0/4",
-    "249.0.0.0/4", "250.0.0.0/4", "251.0.0.0/4",
-    "252.0.0.0/4", "253.0.0.0/4", "254.0.0.0/4",
-    "255.255.255.255/32"
-].join(',');
+// 需要使用代理的域名列表
+var domainsUsingProxy = [
+    "tiktok.com", "google.com.hk", "ent.com", "youtube.com", "googlevideo.com", "ytimg.com", "github.com", "github.io", "githubusercontent.com", "githubassets.com", "bing.com", "bing.cn", "bing.net", "bingapis.com", "live.com", "stackoverflow.com", "wikipedia.org", "godaddy.com", "twitter.com", "x.com", "twimg.com", "docker.com", "facebook.com", "facebook.net", "fbcdn.net", "segment.io", "unpkg.com", "jsdelivr.com", "tv.apple.com", "instagram.com", "cdninstagram.com", "reddit.com", "redd.it", "whatsapp.com", "whatsapp.net"
+];
 
-// 移动优化的Radix树实现
-class MobileOptimizedRadixTree {
-    constructor() {
-        this.root = new Map();
-        this.prefixLength = 0;
-    }
+// 本地 TLD 列表
+var localTlds = [".test", ".localhost"];
 
-    insert(cidr) {
-        const [ipStr, mask] = cidr.split('/');
-        const binary = this.ipToBinary(ipStr, mask);
-        this.prefixLength = Math.max(this.prefixLength, mask);
+// 中国 IP 段列表（这里只是示例，需要从公开数据源获取更详细的列表）
+var chinaIpRanges = [
+    "1.0.0.0/8",
+    "2.0.0.0/7",
+    "3.0.0.0/8"
+    // 添加更多中国 IP 段
+];
 
-        let node = this.root;
-        for (const bit of binary) {
-            if (!node.has(bit)) node.set(bit, new Map());
-            node = node.get(bit);
+// 检查 IP 是否在中国 IP 段内
+function isIpInChina(ip) {
+    for (var i = 0; i < chinaIpRanges.length; i++) {
+        var range = chinaIpRanges[i].split('/');
+        var baseIp = range[0];
+        var mask = parseInt(range[1], 10);
+        var baseIpNum = ipToNum(baseIp);
+        var ipNum = ipToNum(ip);
+        var maskNum = (0xFFFFFFFF << (32 - mask)) >>> 0;
+        if ((ipNum & maskNum) === (baseIpNum & maskNum)) {
+            return true;
         }
-        node.set('*', true);
-    }
-
-    ipToBinary(ip, mask) {
-        const parts = ip.split('.').map(part => parseInt(part, 10).toString(2).padStart(8, '0'));
-        const binary = parts.join('');
-        return binary.slice(0, mask);
-    }
-
-    search(ip) {
-        try {
-            const binary = this.ipToBinary(ip, 32);
-            let node = this.root;
-            for (const bit of binary) {
-                if (node.has(bit)) {
-                    node = node.get(bit);
-                    if (node.has('*')) return true;
-                } else {
-                    break;
-                }
-            }
-            return false;
-        } catch (e) {
-            return false;
-        }
-    }
-}
-
-// 初始化移动优化的中国IP库
-const cnIpTree = new MobileOptimizedRadixTree();
-CN_IPV4.split(',').forEach(cidr => cnIpTree.insert(cidr));
-
-// 移动设备专用代理验证
-async function mobileTestProxy(proxyUrl) {
-    const isCellular = navigator.connection?.effectiveType === 'cellular';
-    const timeout = isCellular ? TIMEOUT * 2 : TIMEOUT;
-
-    try {
-        const response = await Promise.race([
-            fetch('https://www.google.com', {
-                method: 'GET',
-                mode: 'no-cors',
-                cache: 'no-cache',
-                credentials: 'omit',
-                headers: { 'User-Agent': 'PAC-Mobile/1.0' }
-            }),
-            new Promise((_, reject) =>
-                setTimeout(() => reject(new Error('Timeout')), timeout)
-            )
-        ]);
-        return response.ok;
-    } catch (e) {
-        console.log('Proxy test failed:', e);
-        return false;
-    }
-}
-
-// 移动设备网络检测
-function isLowPower() {
-    return navigator.connection?.saveData === true ||
-        navigator.connection?.effectiveType === 'slow-2g';
-}
-
-// 移动设备优化的决策逻辑
-function FindProxyForURL(url, host) {
-    // 直接访问列表（包含移动端常用服务）
-    if (["apple.com", "gstatic.com", "microsoft.com"].some(d => host.endsWith(`.${d}`))) {
-        return DIRECT;
-    }
-
-    const isCell = isCellular();
-    // 中国境内处理
-    if (isInChina(host)) {
-        return isCell && isLowPower() ? DIRECT : (testProxyAvailable() ? PROXY : DIRECT);
-    }
-
-    // 境外请求处理
-    return isCell ? PROXY : (testProxyAvailable() ? PROXY : DIRECT);
-}
-
-// 移动端优化的辅助函数
-function isInChina(host) {
-    if (isIpAddress(host)) {
-        return cnIpTree.search(host);
-    }
-
-    try {
-        const ip = dnsResolve(host);
-        return ip && cnIpTree.search(ip);
-    } catch (e) {
-        return false;
-    }
-}
-
-function testProxyAvailable() {
-    if (isCellular() && navigator.connection?.saveData) {
-        return false; // 省电模式下禁用代理
-    }
-
-    for (let i = 0; i < MAX_RETRIES; i++) {
-        if (mobileTestProxy(PROXY)) return true;
     }
     return false;
 }
 
-// 移动设备兼容性增强
-function isCellular() {
-    return navigator.connection?.type === 'cellular';
+// 将 IP 地址转换为数字
+function ipToNum(ip) {
+    var parts = ip.split('.');
+    return (parseInt(parts[0], 10) << 24) +
+        (parseInt(parts[1], 10) << 16) +
+        (parseInt(parts[2], 10) << 8) +
+        parseInt(parts[3], 10);
 }
 
-// 内存优化（减少移动设备内存占用）
-const ipCache = new Map();
-function dnsResolve(host) {
-    if (ipCache.has(host)) return ipCache.get(host);
+// 检查域名是否在列表中
+function isDomainInList(domain, list) {
+    for (var i = 0; i < list.length; i++) {
+        if (domain.endsWith(list[i])) {
+            return true;
+        }
+    }
+    return false;
+}
 
+// 验证代理状态
+function testProxy() {
+    var url = "http://www.baidu.com";
     try {
-        const ip = dnsResolve(host);
-        ipCache.set(host, ip);
-        return ip;
+        var req = new XMLHttpRequest();
+        req.open('HEAD', url, false);
+        req.send();
+        return req.status >= 200 && req.status < 300;
     } catch (e) {
-        return null;
+        return false;
     }
 }
 
-// 移动设备性能优化
-// 1. 延迟加载策略
-let initialized = false;
-function lazyInit() {
-    if (!initialized) {
-        initialized = true;
-        // 初始化操作放在首次调用时
+// 主函数
+function FindProxyForURL(url, host) {
+    // 检查本地 TLD
+    for (var i = 0; i < localTlds.length; i++) {
+        if (host.endsWith(localTlds[i])) {
+            return direct;
+        }
     }
-}
 
-// 2. 低内存模式
-if (navigator.connection?.effectiveType === 'slow-2g') {
-    cnIpTree.prefixLength = 24; // 降低匹配精度以减少内存
-}
+    // 检查是否在需要使用代理的域名列表中
+    if (isDomainInList(host, domainsUsingProxy)) {
+        if (testProxy()) {
+            return proxy;
+        } else {
+            return direct;
+        }
+    }
 
-// 3. 蜂窝网络流量控制
-let cellularDataUsed = 0;
-function trackDataUsage() {
-    if (isCellular()) {
-        navigator.connection?.addEventListener('change', () => {
-            if (navigator.connection?.saveData) {
-                // 进入省电模式时重置代理
-                location.reload();
+    // 检查是否在中国域名列表中
+    if (isDomainInList(host, directDomains)) {
+        return direct;
+    }
+
+    // 获取 IP 地址
+    var ip = dnsResolve(host);
+    if (ip) {
+        // 检查 IP 是否在中国 IP 段内
+        if (isIpInChina(ip)) {
+            return direct;
+        } else {
+            if (testProxy()) {
+                return proxy;
+            } else {
+                return direct;
             }
-        });
+        }
+    }
+
+    // 默认使用代理
+    if (testProxy()) {
+        return proxy;
+    } else {
+        return direct;
     }
 }
-trackDataUsage();
-
-// 错误处理增强
-try {
-    if (typeof window !== 'undefined') {
-        window.addEventListener('error', (e) => {
-            console.error('PAC Script Error:', e.error);
-            // 移动端特有的错误恢复逻辑
-            if (e.error instanceof TypeError) {
-                // 尝试重新初始化关键组件
-                lazyInit();
-            }
-        });
-    }
-} catch (e) {
-    // 静默处理Worker环境
-}    
