@@ -5,18 +5,23 @@ function FindProxyForURL(url, host) {
     const SOCKS5 = "SOCKS5 192.168.1.55:10808";
     const DIRECT = "DIRECT";
 
-    // 平台检测
+    // 增强版平台检测
     const isWindows = typeof window !== 'undefined' && /Windows/.test(navigator.userAgent);
     const isLinux = typeof window !== 'undefined' && /Linux/.test(navigator.userAgent);
-    const isAndroid = typeof window !== 'undefined' && /Android/.test(navigator.userAgent);
-    const isIOS = typeof window !== 'undefined' && /iPhone|iPad|iPod/.test(navigator.userAgent);
+    const isAndroid = typeof window !== 'undefined' && /Android|Adr/.test(navigator.userAgent);
+    const isIOS = typeof window !== 'undefined' && /iPhone|iPad|iPod|iOS/.test(navigator.userAgent);
+    const isMobile = isAndroid || isIOS;
     const isARM = typeof window !== 'undefined' && /arm|aarch64/.test(navigator.userAgent);
 
-    // 代理协议自动选择
+    // 代理协议自动选择（优化移动设备支持）
     function getBestProxy() {
         try {
-            // 优先尝试SOCKS5
-            if (isWindows || isLinux || isAndroid || isIOS) {
+            // 移动设备优先使用SOCKS5
+            if (isMobile) {
+                return SOCKS5;
+            }
+            // 桌面设备优先尝试SOCKS5
+            if (isWindows || isLinux) {
                 return SOCKS5;
             }
             // 其他平台使用普通HTTP代理
@@ -32,10 +37,10 @@ function FindProxyForURL(url, host) {
         try {
             // 真实测试代理可用性
             if (typeof window !== 'undefined') {
-                // 浏览器环境 - 使用XMLHttpRequest测试
+                // 浏览器环境 - 使用XMLHttpRequest测试（优化移动设备超时）
                 return new Promise(resolve => {
                     const xhr = new XMLHttpRequest();
-                    xhr.timeout = 3000;
+                    xhr.timeout = isMobile ? 5000 : 3000; // 移动设备延长超时时间
                     xhr.open('HEAD', 'http://www.google.com', true);
                     xhr.onload = () => resolve(true);
                     xhr.onerror = () => resolve(false);
@@ -49,7 +54,7 @@ function FindProxyForURL(url, host) {
                     const req = http.request({
                         host: 'www.google.com',
                         port: 80,
-                        timeout: 3000,
+                        timeout: isMobile ? 5000 : 3000, // 移动设备延长超时时间
                         agent: new http.Agent({ keepAlive: false })
                     }, () => resolve(true));
                     req.on('error', () => resolve(false));
@@ -69,7 +74,7 @@ function FindProxyForURL(url, host) {
     let proxyStatus = {
         lastCheck: 0,
         isAvailable: true,
-        checkInterval: 30000 // 30秒检测一次
+        checkInterval: isMobile ? 60000 : 30000 // 移动设备60秒检测一次，桌面设备30秒检测一次
     };
     
     async function checkAndUpdateProxyStatus() {
